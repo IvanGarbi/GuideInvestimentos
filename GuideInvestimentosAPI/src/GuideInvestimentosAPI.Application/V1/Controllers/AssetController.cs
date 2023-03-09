@@ -5,7 +5,6 @@ using GuideInvestimentosAPI.Business.Interfaces;
 using GuideInvestimentosAPI.Business.Interfaces.Notifications;
 using GuideInvestimentosAPI.Business.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Globalization;
 using System.Text.Json;
 using GuideInvestimentosAPI.Business.Notifications;
 
@@ -31,6 +30,7 @@ namespace GuideInvestimentosAPI.Application.V1.Controllers
             _assetService = assetService;
             _assetRepository = assetRepository;
             _mapper = mapper;
+            _notificator = notificator;
 
         }
 
@@ -41,27 +41,21 @@ namespace GuideInvestimentosAPI.Application.V1.Controllers
 
             if (!resultAsset.Any())
             {
-                return NotFound();
+                _notificator.AddNotification(new Notification($"404: The asset {asset} does not exist."));
+                return ApiResponse();
             }
+
             var result = _mapper.Map<List<GetAssetViewModel>>(resultAsset).OrderBy(x => x.Date).ToList();
 
-            var firstDateAsset = result.First();
-
-            for (int i = 1; i < result.Count; i++)
-            {
-                result[i].VariationFirstDate = (((result[i].Value / firstDateAsset.Value) - 1) * 100).ToString("F") + "%";
-                result[i].VariationD1 = (((result[i].Value / result[i -1].Value) - 1) * 100).ToString("F") + "%";
-            }
-
-            return result;
+            return ApiResponse(CalculateVariantion(result));
         }
 
-        [HttpPost]
-        public async Task<ActionResult> Register([FromBody] AssetViewModel assetViewModel)
+        [HttpPost("new-asset")]
+        public async Task<ActionResult<AssetViewModel>> Register([FromBody] AssetViewModel assetViewModel)
         {
             if (!ModelState.IsValid)
             {
-                return NotFound();
+                return ApiResponse(ModelState);
             }
 
             try
@@ -69,17 +63,52 @@ namespace GuideInvestimentosAPI.Application.V1.Controllers
                 var response = await _httpClient.GetStringAsync($"https://query2.finance.yahoo.com/v8/finance/chart/{assetViewModel.Symbol}.SA");
                 var responseObject = JsonSerializer.Deserialize<RootObject>(response);
 
+                if (responseObject.chart.result[0].indicators.quote[0].open == null || responseObject.chart.result[0].timestamp == null)
+                {
+                    _notificator.AddNotification(new Notification("Yahoo API with error."));
+                    return ApiResponse();
+                }
+
                 var success = await _assetService.SaveAsset(responseObject);
 
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return NotFound();
-                throw;
+                if (ex.Message.Contains("404"))
+                {
+                    _notificator.AddNotification(new Notification($"404: The asset {assetViewModel.Symbol} does not exist."));
+                }
+                else
+                {
+                    _notificator.AddNotification(new Notification("Error, please contact our services."));
+                }
+
+                return ApiResponse();
             }
 
+            return ApiResponse(assetViewModel);
+        }
 
-            return Ok();
+        private List<GetAssetViewModel> CalculateVariantion(List<GetAssetViewModel> assets)
+        {
+            var firstDateAsset = assets.First();
+
+            for (int i = 1; i < assets.Count; i++)
+            {
+                assets[i].VariationFirstDate = (((assets[i].Value / firstDateAsset.Value) - 1) * 100).ToString("F") + "%";
+
+                if (assets[i - 1].Value != 0)
+                {
+                    assets[i].VariationD1 = (((assets[i].Value / assets[i - 1].Value) - 1) * 100).ToString("F") + "%";
+                }
+                else
+                {
+                    assets[i].VariationD1 = string.Empty;
+                }
+
+            }
+
+            return assets;
         }
     }
 }

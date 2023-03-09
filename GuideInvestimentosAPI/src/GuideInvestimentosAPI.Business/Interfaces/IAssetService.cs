@@ -2,7 +2,7 @@
 
 namespace GuideInvestimentosAPI.Business.Interfaces
 {
-    public interface IAssetService
+    public interface IAssetService : IDisposable
     {
         Task<bool> SaveAsset(RootObject responseObject);
     }
