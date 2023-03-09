@@ -1,10 +1,13 @@
-﻿using GuideInvestimentosAPI.Application.Controllers;
+﻿using AutoMapper;
+using GuideInvestimentosAPI.Application.Controllers;
 using GuideInvestimentosAPI.Application.ViewModels;
 using GuideInvestimentosAPI.Business.Interfaces;
+using GuideInvestimentosAPI.Business.Interfaces.Notifications;
 using GuideInvestimentosAPI.Business.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
 using System.Text.Json;
+using GuideInvestimentosAPI.Business.Notifications;
 
 
 namespace GuideInvestimentosAPI.Application.V1.Controllers
@@ -14,18 +17,43 @@ namespace GuideInvestimentosAPI.Application.V1.Controllers
     public class AssetController : MainController
     {
         private readonly IAssetService _assetService;
+        private readonly IAssetRepository _assetRepository;
         private readonly HttpClient _httpClient;
+        private readonly IMapper _mapper;
 
-        public AssetController(HttpClient httpClient, IAssetService assetService)
+        public AssetController(HttpClient httpClient, 
+                                IAssetService assetService, 
+                                INotificator notificator, 
+                                IAssetRepository assetRepository, 
+                                IMapper mapper) : base(notificator)
         {
             _httpClient = httpClient;
             _assetService = assetService;
+            _assetRepository = assetRepository;
+            _mapper = mapper;
+
         }
 
         [HttpGet("{asset}")]
-        public async Task<ActionResult> Get(string asset)
+        public async Task<ActionResult<List<GetAssetViewModel>>> Get(string asset)
         {
-            return Ok();
+            var resultAsset = await _assetRepository.GetAsset(asset + ".SA");
+
+            if (!resultAsset.Any())
+            {
+                return NotFound();
+            }
+            var result = _mapper.Map<List<GetAssetViewModel>>(resultAsset).OrderBy(x => x.Date).ToList();
+
+            var firstDateAsset = result.First();
+
+            for (int i = 1; i < result.Count; i++)
+            {
+                result[i].VariationFirstDate = (((result[i].Value / firstDateAsset.Value) - 1) * 100).ToString("F") + "%";
+                result[i].VariationD1 = (((result[i].Value / result[i -1].Value) - 1) * 100).ToString("F") + "%";
+            }
+
+            return result;
         }
 
         [HttpPost]

@@ -1,7 +1,10 @@
 using GuideInvestimentosAPI.Application.V1.Controllers;
 using GuideInvestimentosAPI.Business.Interfaces;
+using GuideInvestimentosAPI.Business.Interfaces.Notifications;
+using GuideInvestimentosAPI.Business.Notifications;
 using GuideInvestimentosAPI.Business.Services;
 using GuideInvestimentosAPI.Data.Context;
+using GuideInvestimentosAPI.Data.Repository;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +38,12 @@ builder.Services.AddDbContext<GuideInvestimentosApiDbContext>(options =>
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
 builder.Services.AddHttpClient<IAssetService, AssetService>();
 builder.Services.AddScoped<IAssetService, AssetService>();
+builder.Services.AddScoped<IAssetRepository, AssetRepository>();
+builder.Services.AddScoped<INotificator, Notificator>();
+// Finish Dependency Injection
+
+// AutoMapper
+builder.Services.AddAutoMapper(typeof(Program));
 
 var app = builder.Build();
 

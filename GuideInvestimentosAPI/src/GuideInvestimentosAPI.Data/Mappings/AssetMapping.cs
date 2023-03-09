@@ -26,7 +26,7 @@ namespace GuideInvestimentosAPI.Data.Mappings
 
             builder.Property(x => x.Value)
                 .IsRequired()
-                .HasColumnType("DECIMAL");
+                .HasColumnType("DECIMAL(10,4)");
 
             builder.ToTable("Asset");
         }

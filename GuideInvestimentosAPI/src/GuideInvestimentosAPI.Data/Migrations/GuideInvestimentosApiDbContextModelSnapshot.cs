@@ -42,7 +42,7 @@ namespace GuideInvestimentosAPI.Data.Migrations
                         .HasColumnType("VARCHAR");
 
                     b.Property<decimal>("Value")
-                        .HasColumnType("DECIMAL");
+                        .HasColumnType("DECIMAL(10,4)");
 
                     b.HasKey("Id");
 
