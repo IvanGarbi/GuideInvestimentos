@@ -126,13 +126,11 @@ namespace GuideInvestimentosAPI.Tests.UnitTests.Asset
 
             }
 
-
             var options = new DbContextOptionsBuilder<GuideInvestimentosApiDbContext>()
                 .UseInMemoryDatabase("GuideInvestimentosApiDb2")
                 .Options;
 
             var notification = new Mock<Notificator>();
-
 
             AssetRepository assetRepository = new AssetRepository(new GuideInvestimentosApiDbContext(options));
 
